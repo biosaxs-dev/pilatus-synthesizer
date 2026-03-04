@@ -1,0 +1,1 @@
+nosetests --verbose --with-coverage --cover-erase --cover-package=AutoRunController,BasicUtils,CommandController,ChangeableLogger,Development,GuiSettingInfo,GuiPreferences,GuiController,ImageSynthesizer,MinimalTiff,PersistentInfo,PilatusCounter,PilatusImageInfoTable,PilatusImageViewer,PilatusUtils,Preferences,SAnglerMask,Settings,OurColorMaps,OurImageIO,ZoomPan

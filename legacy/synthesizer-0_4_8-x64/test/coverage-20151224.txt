@@ -1,0 +1,118 @@
+Name                       Stmts   Miss  Cover   Missing
+--------------------------------------------------------
+AutoRunController.py          88      4    95%    81        ok  hardly ocurrs
+                                                  85        ok  hardly ocurrs
+                                                 100        ok  never  ocurrs
+                                                 140        ok  hardly ocurrs
+BasicUtils.py                 47      2    96%   31         ok  hardly ocurrs
+                                                 51         ok  hardly ocurrs
+ChangeableLogger.py           28      0   100%
+CommandController.py          69      6    91%   33         todo
+                                                 36         todo
+                                                 39         todo
+                                                 52         todo
+                                                 62         todo
+                                                 65         todo
+Development.py               123      6    95%   87
+                                                 117
+                                                 159-161
+                                                 173
+GuiController.py             175     21    88%   149        todo
+                                                 166        todo
+                                                 185        ok  never  ocurrs
+                                                 209        todo
+                                                 224        todo
+                                                 234-240    todo
+                                                 252-253    todo
+                                                 275-279    todo
+                                                 282        todo
+                                                 287-288    todo
+GuiPreferences.py            158     27    83%   110        todo
+                                                 130-143    todo
+                                                 150-164    todo
+                                                 188        ok  never be used
+                                                 200        todo
+GuiSettingInfo.py            524     72    86%   232-233    todo
+                                                 236-240    todo
+                                                 277-280    todo
+                                                 391        todo
+                                                 401-402    todo
+                                                 458-459    todo
+                                                 462-463    todo
+                                                 484-495    todo
+                                                 519-525    todo
+                                                 574-579    todo
+                                                 596-601    todo
+                                                 612        todo
+                                                 622-624    todo
+                                                 627-629    todo
+                                                 634-638    ok  never be used
+                                                 654-659    todo
+                                                 677        todo
+                                                 715-716    ok  never  ocurrs
+                                                 721-733    todo
+ImageSynthesizer.py          195      7    96%   53         ok  never  ocurrs
+                                                 57         todo
+                                                 66         todo
+                                                 73         todo
+                                                 142        ok  hardly ocurrs
+                                                 151        ok  hardly ocurrs
+                                                 224        todo
+OurColorMaps.py               30      2    93%   69         todo
+                                                 188        todo
+OurMatplotlib.py             102      6    94%   21         not windows
+                                                 42         todo
+                                                 94         todo
+                                                 114        todo
+                                                 129        todo
+                                                 137        todo
+PersistentInfo.py             52     10    81%   19-20      todo ( python2 )
+                                                 36         todo
+                                                 39         todo
+                                                 54-61      todo ( python2 )
+PilatusCounter.py             47      0   100%
+PilatusImage.py              227     77    66%   55-56      todo
+                                                 85         todo ( slow )
+                                                 92-93      todo
+                                                 96-98      todo ( refactoring )
+                                                 111-127    todo ( slow )
+                                                 130-167    todo ( slow )
+                                                 285-303    todo ( slow ),
+                                                 326-349    todo ( slow )
+                                                 381        todo
+PilatusImageInfoTable.py     285     66    77%   83         todo
+                                                 115        todo
+                                                 135        todo
+                                                 151        todo
+                                                 234-235    todo
+                                                 265-267    todo
+                                                 270-271    todo
+                                                 275-277    todo
+                                                 280-281    todo
+                                                 285-291    todo
+                                                 299-305    todo
+                                                 308-311    todo
+                                                 322-327    todo
+                                                 335-337    todo
+                                                 362-365    todo
+                                                 385-386    todo
+                                                 394        todo
+                                                 398-403    todo
+                                                 432
+                                                 435-457    todo
+PilatusImageViewer.py        108      2    98%   147        todo
+                                                 155        todo
+PilatusUtils.py              123      2    98%   154        todo
+                                                 186        todo
+Preferences.py                28      0   100%
+SAnglerMask.py                30      0   100%
+Settings.py                   40      0   100%
+ZoomPan.py                   108     23    79%   45-59      todo
+                                                 65-66      todo
+                                                 82-83      ok  never  ocurrs
+                                                 87-95      todo
+--------------------------------------------------------
+TOTAL                       2587    296    89%
+----------------------------------------------------------------------
+Ran 82 tests in 198.341s
+

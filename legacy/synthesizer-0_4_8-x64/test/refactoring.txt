@@ -1,0 +1,13 @@
+GUI
+
+    1   FolderEntry
+    2   FileEntry
+    3   find_jump_point:    refactoring to unify or remove this and Mapper.find_jump_point
+    4   MVC
+
+Modeling
+    1   Generalized for Spheres, Rods or Sheets
+    2   Bridged Guinier-Porod Model
+    3   Bicomponent Model
+
+

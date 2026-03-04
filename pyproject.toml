@@ -1,0 +1,61 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pilatus-synthesizer"
+version = "0.5.0"
+
+dependencies = [
+  "numpy",
+  "pandas",
+  "pillow",
+  "matplotlib",
+  "fabio",
+  "tksheet",
+]
+
+requires-python = ">=3.12,<3.14"
+
+authors = [
+  {name = "SAXS Team, KEK-PF"},
+]
+
+maintainers = [
+  {name = "SAXS Team, KEK-PF"},
+]
+
+description = "Pilatus detector image synthesizer for SAXS beamlines"
+readme = "README.md"
+license = { text = "GNU General Public License v3.0" }
+
+keywords = ["SAXS", "Pilatus", "detector", "image-synthesis", "beamline"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Programming Language :: Python",
+  "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+  "Topic :: Scientific/Engineering :: Physics",
+  "Intended Audience :: Science/Research",
+]
+
+[project.optional-dependencies]
+testing = [
+  "pytest",
+  "pytest-cov",
+]
+
+[project.scripts]
+pilatus-synthesizer = "pilatus_synthesizer.app:main"
+
+[project.urls]
+Repository = "https://github.com/biosaxs-dev/pilatus-synthesizer"
+
+[tool.pytest.ini_options]
+python_files = ["test_*.py"]
+pythonpath = ["."]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
+
+[tool.coverage.run]
+branch = true
