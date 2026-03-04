@@ -6,6 +6,7 @@ Copyright (c) 2016-2020, Masatsuyo Takahashi, KEK-PF
 
 import os
 import re
+import sys
 import time
 import shutil
 
@@ -65,3 +66,11 @@ def print_exception():
     from pilatus_synthesizer._keklib.exception_traceback import ExceptionTracebacker
     etb = ExceptionTracebacker()
     print(etb)
+
+
+def exe_name() -> str:
+    """Return the current executable/script name without extension."""
+    name = os.path.split(sys.argv[0])[-1]
+    for ext in ('.exe', '.py'):
+        name = name.replace(ext, '')
+    return name

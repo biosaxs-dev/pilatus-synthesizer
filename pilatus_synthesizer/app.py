@@ -45,9 +45,12 @@ def main():
 
 
 def gui_main():
-    # TODO: Phase 4 — launch Tkinter GUI
-    print("GUI mode not yet implemented. Use -c for command mode.")
-    sys.exit(1)
+    import tkinter as tk
+    from pilatus_synthesizer.gui.controller import Controller
+    root = tk.Tk()
+    root.withdraw()
+    Controller(root)
+    root.mainloop()
 
 
 if __name__ == '__main__':

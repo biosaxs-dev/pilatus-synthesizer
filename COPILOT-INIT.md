@@ -47,7 +47,7 @@ pilatus_synthesizer/
 - **Phase 2 (Core)**: ✅ Complete — all core/ and _keklib/ modules migrated
 - **Phase 3 (Config & CLI)**: Not started
 - **Phase 4 (GUI)**: Not started — tksheet modernization planned
-- **Phase 5 (Tests & Polish)**: Not started
+- **Phase 5 (Tests & Polish)**: Complete
 
 ### Migrated modules (Phase 2)
 

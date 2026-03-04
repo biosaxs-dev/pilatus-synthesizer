@@ -16,7 +16,7 @@ ITEM_DEFAULTS = {
     'syn_folder': None,
     'op_option': 'MANUAL',
     'watch_interval': 180,
-    'positive_direction': None,
+    'positive_direction': 'right',
 }
 
 _setting_info = PersistentInfo('settings.dump')

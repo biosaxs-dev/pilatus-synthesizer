@@ -51,8 +51,13 @@ pilatus-synthesizer = "pilatus_synthesizer.app:main"
 Repository = "https://github.com/biosaxs-dev/pilatus-synthesizer"
 
 [tool.pytest.ini_options]
+testpaths = ["tests"]
 python_files = ["test_*.py"]
 pythonpath = ["."]
+addopts = "-v --tb=short"
+markers = [
+    "requires_data: mark test as requiring external measurement data (deselect with -m 'not requires_data')",
+]
 filterwarnings = [
     "ignore::DeprecationWarning",
 ]
