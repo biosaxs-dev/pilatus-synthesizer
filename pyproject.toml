@@ -13,6 +13,7 @@ dependencies = [
   "matplotlib",
   "fabio",
   "tksheet",
+  "python-tkdnd",
 ]
 
 requires-python = ">=3.12,<3.14"

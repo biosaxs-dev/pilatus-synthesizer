@@ -45,9 +45,9 @@ def main():
 
 
 def gui_main():
-    import tkinter as tk
+    from tkinterDnD import Tk
     from pilatus_synthesizer.gui.controller import Controller
-    root = tk.Tk()
+    root = Tk()
     root.withdraw()
     Controller(root)
     root.mainloop()

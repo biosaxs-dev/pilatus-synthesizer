@@ -10,7 +10,6 @@ Copyright (c) SAXS Team, KEK-PF
 
 import queue
 import tkinter as tk
-from tkinter import scrolledtext
 
 from pilatus_synthesizer._keklib.execution_window.progress_bar_view import ProgressBarView
 from pilatus_synthesizer._keklib.execution_window.threads_connector import ThreadsConnector
@@ -56,10 +55,18 @@ class ActionWindow(tk.Toplevel):
         log_frame = tk.Frame(self)
         log_frame.pack(fill=tk.BOTH, expand=True, padx=8, pady=(8, 4))
 
-        self._log = scrolledtext.ScrolledText(
-            log_frame, height=16, width=72, state='disabled',
-            font=('Courier', 9), wrap=tk.WORD,
+        yscroll = tk.Scrollbar(log_frame, orient=tk.VERTICAL)
+        xscroll = tk.Scrollbar(log_frame, orient=tk.HORIZONTAL)
+        self._log = tk.Text(
+            log_frame, height=16, width=100, state='disabled',
+            font=('Courier', 9), wrap=tk.NONE,
+            yscrollcommand=yscroll.set,
+            xscrollcommand=xscroll.set,
         )
+        yscroll.config(command=self._log.yview)
+        xscroll.config(command=self._log.xview)
+        xscroll.pack(side=tk.BOTTOM, fill=tk.X)
+        yscroll.pack(side=tk.RIGHT, fill=tk.Y)
         self._log.pack(fill=tk.BOTH, expand=True)
 
         # --- progress bar ---------------------------------------------------
@@ -81,6 +88,13 @@ class ActionWindow(tk.Toplevel):
         self.protocol('WM_DELETE_WINDOW', self._on_button)
         self.transient(parent)
         self.grab_set()
+
+        # size width to match parent window
+        self.update_idletasks()
+        pw = parent.winfo_width()
+        px = parent.winfo_rootx()
+        py = parent.winfo_rooty() + 40
+        self.geometry(f'{pw}x{self.winfo_reqheight()}+{px}+{py}')
 
         self._poll()
 
