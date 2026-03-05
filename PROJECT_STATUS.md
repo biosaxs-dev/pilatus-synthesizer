@@ -1,14 +1,14 @@
 # Project Status — Pilatus Synthesizer Migration
 
-**Last Updated**: 2026-03-04  
-**Current Phase**: Post-migration bug fixes (Phase 5 complete)
+**Last Updated**: 2026-03-05  
+**Current Phase**: Tests & Polish (Phase 5 in progress)
 
 ---
 
 ## Current State
 
-**Migration Status**: ✅ All 5 phases complete  
-**Current Work**: GUI runtime bug fixes and UX polish  
+**Migration Status**: 🔄 Phase 5 in progress  
+**Current Work**: Tests & Polish  
 **Active Issues**: Table row selection behavior (partially resolved)
 
 ---
@@ -109,7 +109,7 @@
 - tksheet replacing TkTable
 - All dialogs and windows
 
-### Phase 5: Tests & Polish ✅
+### Phase 5: Tests & Polish 🔄 (in progress)
 - conftest.py with data gating
 - Unit tests (basic_utils, preferences, settings)
 - Integration tests (7 data-dependent files)

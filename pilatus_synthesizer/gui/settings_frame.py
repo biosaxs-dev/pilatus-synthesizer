@@ -237,6 +237,8 @@ class EntryFrame(tk.Frame):
         def _entry_tracer(*_):
             self.changed_after_refresh = True
             self.changed_ever          = True
+            if not self._in_construction:
+                self.after(0, self.check_entries)
 
         self.in_folder.trace_add('write', _entry_tracer)
         self.log_file.trace_add('write', _entry_tracer)

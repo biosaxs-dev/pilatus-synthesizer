@@ -84,14 +84,16 @@ def get_data_info(folder_info, log_file, mask_file,
         fkey = '_'.join([f1, f2, f3])
         count = counter_dict.get(fkey)
         if count is None:
-            if logger is None:
-                import logging
-                logger = logging.getLogger(__name__)
-            logger.error("No counter info for %s.", fkey)
-            continue
+            if counter_id != 'None':
+                if logger is None:
+                    import logging
+                    logger = logging.getLogger(__name__)
+                logger.error("No counter info for %s.", fkey)
+                continue
+            count = 1  # counter_id='None': no normalization
 
         orig_key = re.sub(r'_d\d_', '_d0_', fkey)
-        orig_count = counter_dict.get(orig_key)
+        orig_count = counter_dict.get(orig_key) or count
         ratio = count / orig_count
 
         adj_file = adj_file_dict.get(key)

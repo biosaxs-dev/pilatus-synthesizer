@@ -59,7 +59,7 @@ _TIF_DIR_MAP = {
     _COL_SYN:  'syn_folder',
 }
 
-_COL_WIDTHS = [40, 280, 280, 120, 140, 280, 120, 140, 280]
+_COL_WIDTHS = [30, 150, 150, 70, 80, 150, 70, 80, 150]  # total ≈ 930px
 _NUM_COLS   = 9
 
 
@@ -81,6 +81,7 @@ class ImageTable:
 
         self._sheet: tksheet.Sheet | None = None
         self._frame: tk.Frame | None = None
+        self._in_cell_select = False
 
         self.refresh()
 
@@ -194,16 +195,18 @@ class ImageTable:
             self._frame,
             headers=header,
             data=rows,
-            width=1400,
             height=400,
             show_row_index=False,
             theme='light green',
         )
         self._sheet.pack(expand=True, fill=tk.BOTH)
 
-        # column widths
+        # column widths and alignment
+        _CENTER_COLS = {_COL_NO, _COL_POS1, _COL_RAT1, _COL_POS2, _COL_RAT2}
         for c, w in enumerate(_COL_WIDTHS):
             self._sheet.column_width(column=c, width=w)
+            align = 'center' if c in _CENTER_COLS else 'w'
+            self._sheet.align_columns(columns=[c], align=align)
 
         # enable built-in horizontal scroll
         self._sheet.enable_bindings(
@@ -255,7 +258,7 @@ class ImageTable:
 
         # track selection
         self._sheet.extra_bindings(
-            [('cell_select',     self._on_select),
+            [('cell_select',     self._on_cell_select),
              ('row_select',      self._on_select),
              ('deselect',        self._on_select)])
 
@@ -270,7 +273,7 @@ class ImageTable:
     # Public: do_action
     # ------------------------------------------------------------------
 
-    def do_action(self, action: int, change: bool = False) -> None:
+    def do_action(self, action: int, change: bool = False, confirm: bool = True) -> None:
         if self.suggestion and self.suggestion.is_blinking():
             MessageBox.showwarning(
                 'Not Allowed',
@@ -297,7 +300,7 @@ class ImageTable:
                 temporary_preferences_end()
                 return
 
-        self.synthesizer.execute(action, exec_array)
+        self.synthesizer.execute(action, exec_array, confirm=confirm)
 
         if change:
             temporary_preferences_end()
@@ -319,16 +322,42 @@ class ImageTable:
     # Internal helpers
     # ------------------------------------------------------------------
 
+    def _on_cell_select(self, event=None):
+        """Promote single-cell click to full row selection (legacy behavior)."""
+        if self._in_cell_select:
+            return
+        cur = self._sheet.get_currently_selected()
+        if cur and isinstance(cur[0], int):
+            row = cur[0]
+            if 0 <= row < len(self.data_array):
+                self._in_cell_select = True
+                try:
+                    self._sheet.select_row(row)
+                finally:
+                    self._in_cell_select = False
+                self.num_selected_rows = 1
+                return
+        # fallback: count whatever is selected
+        self._on_select(event)
+
     def _on_select(self, event=None):
         selected = self._sheet.get_selected_rows(
             get_cells_as_rows=True, return_tuple=True)
         self.num_selected_rows = len(selected)
 
     def _on_double_click(self, event=None):
-        # Let tksheet handle the selection naturally, just trigger the viewer
-        # Use after(1,...) so tksheet finishes updating its selection state
+        """Select the clicked row and show images."""
+        cur = self._sheet.get_currently_selected()
+        if cur and isinstance(cur[0], int):
+            row = cur[0]
+            if 0 <= row < len(self.data_array):
+                self._in_cell_select = True
+                try:
+                    self._sheet.select_row(row)
+                finally:
+                    self._in_cell_select = False
+                self.num_selected_rows = 1
         self._sheet.after(1, lambda: self.do_action(1))
-        # Don't return 'break' - let tksheet process the event normally
 
     def _on_header_click(self, event=None):
         # Check if click is on the "No" column header (column 0)

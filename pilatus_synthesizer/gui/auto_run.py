@@ -71,7 +71,7 @@ class AutoRunController:
             )
             # After refresh, run synthesis on any newly-selected rows
             if self._image_table.num_selected_rows > 0:
-                self._image_table.do_action(3)
+                self._image_table.do_action(3, confirm=False)
         except Exception:
             logger.exception('Auto-run poll error')
 

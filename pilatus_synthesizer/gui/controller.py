@@ -28,8 +28,9 @@ from pilatus_synthesizer.gui.settings_frame import EntryFrame
 from pilatus_synthesizer.gui.image_table import ImageTable
 from pilatus_synthesizer.gui.auto_run import AutoRunController
 
-_LABEL_BG = 'gray25'
-_LABEL_FG = 'white'
+_LABEL_BG = '#CAEAD8'
+_LABEL_FG = '#217346'
+_LABEL_FONT = ('Calibri', 11)
 _MAX_HEIGHT = 600
 
 
@@ -73,7 +74,8 @@ class Controller(tk.Toplevel):
 
         tk.Label(si_label_frame,
                  text=' Setting Information Entries ',
-                 relief=tk.FLAT, fg=_LABEL_FG, bg=_LABEL_BG).pack(
+                 relief=tk.GROOVE, fg=_LABEL_FG, bg=_LABEL_BG,
+                 font=_LABEL_FONT).pack(
             side=tk.LEFT, anchor=tk.W)
 
         self._clear_button = SlimButton(
@@ -96,12 +98,23 @@ class Controller(tk.Toplevel):
 
         tk.Label(img_label_frame,
                  text=' Image Data Information Table ',
-                 relief=tk.FLAT, fg=_LABEL_FG, bg=_LABEL_BG).pack(
+                 relief=tk.GROOVE, fg=_LABEL_FG, bg=_LABEL_BG,
+                 font=_LABEL_FONT).pack(
             side=tk.LEFT, anchor=tk.W)
 
+        # BlinkingFrame is packed first so Refresh always appears before Run.
+        # Refresh button and guide are children of BF so blinking (pack_forget
+        # + pack inside BF) never disturbs the sibling order in img_label_frame.
+        self.refresh_button_suggestion = BlinkingFrame(
+            img_label_frame, [],
+            start_proc=self.run_button_disable,
+            stop_proc=self.run_button_enable,
+        )
+        self.refresh_button_suggestion.pack(side=tk.LEFT, anchor=tk.W)
+
         self.refresh_button = SlimButton(
-            img_label_frame, text='Refresh', command=self.refresh)
-        self.refresh_button_guide = tk.Label(img_label_frame, text='')
+            self.refresh_button_suggestion, text='Refresh', command=self.refresh)
+        self.refresh_button_guide = tk.Label(self.refresh_button_suggestion, text='')
         ToolTip(self.refresh_button,
                 'Press this button to refresh the measured data information '
                 'listed below.')
@@ -112,12 +125,8 @@ class Controller(tk.Toplevel):
             [self.refresh_button_guide,
              {'side': tk.LEFT, 'anchor': tk.W}],
         ]
-        self.refresh_button_suggestion = BlinkingFrame(
-            img_label_frame, blinking_spec,
-            start_proc=self.run_button_disable,
-            stop_proc=self.run_button_enable,
-        )
-        self.refresh_button_suggestion.pack(side=tk.LEFT, anchor=tk.W, padx=10)
+        self.refresh_button_suggestion._specs = blinking_spec
+        self.refresh_button_suggestion._show()
 
         self.run_button = SlimButton(
             img_label_frame, text='Run',

@@ -10,8 +10,7 @@ Usage::
     dnd.bindtarget(entry_widget, my_callback, 'text/uri-list')
 
 The callback receives a synthetic event with a ``data`` attribute containing
-the dropped text (after stripping ``{`` / ``}`` that Windows adds around
-paths with spaces).
+the dropped text.
 
 Original: lib/KekLib/TkDndWrapper.py
 Copyright (c) SAXS Team, KEK-PF
@@ -22,22 +21,30 @@ import tkinter
 
 TKDND_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'tkdnd2.8')
 
+# tkdnd substitution variables passed to every DnD callback
+_SUBST_FORMAT = ('%A', '%a', '%b', '%D', '%d', '%m', '%T',
+                 '%W', '%X', '%Y', '%x', '%y')
+_SUBST_FORMAT_STR = ' '.join(_SUBST_FORMAT)
+
 
 class TkDND:
     """Thin wrapper around the tkdnd2.8 Tcl package."""
 
     def __init__(self, widget):
         self._available = False
+        self._master = widget.winfo_toplevel()
+        self._tk = self._master.tk
         try:
-            root = widget.winfo_toplevel()
             try:
-                root.tk.call('package', 'require', 'tkdnd')
+                self._tk.call('package', 'require', 'tkdnd')
             except tkinter.TclError:
-                root.tk.call('lappend', 'auto_path', TKDND_DIR)
-                root.tk.call('package', 'require', 'tkdnd')
+                self._tk.call('lappend', 'auto_path', TKDND_DIR)
+                self._tk.call('package', 'require', 'tkdnd')
             self._available = True
         except tkinter.TclError:
             print('Warning: tkdnd not available – drag-and-drop disabled.')
+
+    # ------------------------------------------------------------------
 
     def bindtarget(self, widget, callback, dndtype: str, priority: int = 50) -> None:
         """Register *widget* as a drop target for *dndtype* data.
@@ -55,30 +62,43 @@ class TkDND:
         if not self._available:
             return
 
-        widget.tk.call('tkdnd::drop_target', 'register', widget._w, dndtype)
+        cmd = self._prepare_dnd_func(widget, callback)
+        self._tk.call('dnd', 'bindtarget', widget, dndtype, '<Drop>', cmd, priority)
 
-        # Build a unique Tcl command name for this widget
-        cmd_name = f'_pilatus_dnd_{id(widget):x}'
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
 
-        class _DropEvent:
-            __slots__ = ('widget', 'data')
+    def _prepare_dnd_func(self, widget, callback):
+        """Register *callback* with Tcl and return the Tcl command string."""
+        funcid = self._master.register(callback, self._dnd_substitute)
+        return f'{funcid} {_SUBST_FORMAT_STR}'
 
-            def __init__(self, w, d):
-                self.widget = w
-                self.data = d
+    def _dnd_substitute(self, *args):
+        """Convert raw Tcl DnD substitution args into a synthetic Event."""
+        if len(args) != len(_SUBST_FORMAT):
+            return args
 
-        def _tcl_handler(raw_data: str) -> str:
-            event = _DropEvent(widget, raw_data)
+        def _try_int(x):
             try:
-                callback(event)
-            except Exception as exc:
-                print(f'DnD callback error: {exc}')
-            return 'copy'  # inform tkdnd the drop succeeded
+                return int(str(x))
+            except ValueError:
+                return x
 
-        # Replace any previous binding for this widget
-        try:
-            widget.tk.deletecommand(cmd_name)
-        except Exception:
-            pass
-        widget.tk.createcommand(cmd_name, _tcl_handler)
-        widget.tk.call('bind', widget._w, '<<Drop>>', f'{cmd_name} %D')
+        A, a, b, D, d, m, T, W, X, Y, x, y = args
+
+        event = tkinter.Event()
+        event.action      = A
+        event.action_list = str(a).split()
+        event.mouse_button = _try_int(b)
+        event.data        = D
+        event.descr       = d
+        event.modifier    = m
+        event.dndtype     = T
+        event.widget      = self._master.nametowidget(W)
+        event.x_root      = _try_int(X)
+        event.y_root      = _try_int(Y)
+        event.x           = _try_int(x)
+        event.y           = _try_int(y)
+
+        return (event,)

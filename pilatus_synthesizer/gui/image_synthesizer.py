@@ -25,6 +25,28 @@ from pilatus_synthesizer.__init__ import version_string
 logger = logging.getLogger(__name__)
 
 
+class _SilentConnector:
+    """Drop-in connector for auto-run: logs to Python logger, no window."""
+
+    def is_cancelled(self) -> bool:
+        return False
+
+    def put_cancelled(self) -> None:
+        pass
+
+    def put_log(self, message: str) -> None:
+        logger.info('[auto] %s', message)
+
+    def put_progress(self, value: int) -> None:
+        pass
+
+    def run_in_thread(self, func, *args, **kwargs):
+        import threading
+        t = threading.Thread(target=func, args=args, kwargs=kwargs, daemon=True)
+        t.start()
+        return t
+
+
 class ImageSynthesizer:
     """GUI-aware synthesizer tied to a parent Tk widget."""
 
@@ -35,7 +57,7 @@ class ImageSynthesizer:
     # Public entry point
     # ------------------------------------------------------------------
 
-    def execute(self, action: int, exec_array: list) -> None:
+    def execute(self, action: int, exec_array: list, confirm: bool = True) -> None:
         self._set_setting_info(action)
 
         if not exec_array:
@@ -52,13 +74,19 @@ class ImageSynthesizer:
         # action == 3: synthesize
         n = len(exec_array)
         s = 's' if n > 1 else ''
-        if not MessageBox.askokcancel(
+        if confirm and not MessageBox.askokcancel(
                 'Confirmation',
                 f'You are making synthesized images for {n} sample{s}. OK?'):
             return
 
         self._exec_array = exec_array
         logger.info('Preparing calculations with %s', version_string())
+
+        if not confirm:
+            # Auto-run: no window, background thread, log to Python logger only
+            connector = _SilentConnector()
+            connector.run_in_thread(self._exec_syntheses, connector)
+            return
 
         connector = ThreadsConnector()
         win = ActionWindow(

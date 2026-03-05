@@ -77,6 +77,7 @@ class BlinkingFrame(tk.Frame):
         self._blinking = False
         self._visible = False
         self._after_id = None
+        self._show()  # show children immediately at construction
 
     # ------------------------------------------------------------------
     # Public control
@@ -138,11 +139,11 @@ class BlinkingFrame(tk.Frame):
 # ------------------------------------------------------------------
 
 class SlimButton(tk.Button):
-    """A compact, flat-relief button suitable for toolbar use."""
+    """A compact button suitable for toolbar use."""
 
     def __init__(self, master, **kwargs):
-        kwargs.setdefault('relief', tk.FLAT)
+        kwargs.setdefault('relief', tk.RAISED)
         kwargs.setdefault('padx', 4)
         kwargs.setdefault('pady', 1)
-        kwargs.setdefault('bd', 1)
+        kwargs.setdefault('bd', 2)
         tk.Button.__init__(self, master, **kwargs)
