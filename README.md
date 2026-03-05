@@ -66,3 +66,7 @@ pilatus-synthesizer -c -i INPUT_FOLDER [-o OUTPUT_FOLDER]
 ## Copyright
 
 Copyright (c) 2015-2026, SAXS Team, KEK-PF
+
+## Acknowledgements
+
+The migration of this project from the legacy codebase to the current Python package structure was performed with the assistance of [GitHub Copilot](https://github.com/features/copilot) (Claude Sonnet 4.6), 2026.
