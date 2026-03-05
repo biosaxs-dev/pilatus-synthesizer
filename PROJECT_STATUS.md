@@ -1,19 +1,52 @@
 # Project Status — Pilatus Synthesizer Migration
 
 **Last Updated**: 2026-03-05  
-**Current Phase**: Tests & Polish (Phase 5 in progress)
+**Current Phase**: Phase 5 complete → Phase 6 (Embeddable Distribution) in progress
 
 ---
 
 ## Current State
 
-**Migration Status**: 🔄 Phase 5 in progress  
-**Current Work**: Tests & Polish  
-**Active Issues**: Table row selection behavior (partially resolved)
+**Migration Status**: ✅ Phase 5 complete  
+**Current Work**: Embeddable distribution build  
+**Active Issues**: None
 
 ---
 
-## Recent Work (2026-03-04 Session)
+## Recent Work (2026-03-05 Session)
+
+### DnD Migration ✅
+
+- Deleted bundled `_keklib/tkdnd2.8/` directory (Tcl binary package)
+- Rewrote `_keklib/tk_dnd_wrapper.py` to use `python-tkdnd` (`pip install python-tkdnd`)
+- `TkDND.bindtarget()` now uses `widget.register_drop_target("*")` + `widget.bind("<<Drop>>")`  
+  (pattern from molass-legacy `TkCustomWidgets.py`)
+- Updated `app.py`: `from tkinterDnD import Tk` / `root = Tk()`
+- Added `python-tkdnd` to `pyproject.toml` dependencies
+- Published as **v0.5.1** on PyPI
+
+### Execution Log Window ✅
+
+- Replaced `scrolledtext.ScrolledText(wrap=WORD)` with `tk.Text(wrap=NONE)` + x/y scrollbars
+- Window width now matches the main window (geometry set immediately after `Toplevel.__init__()`)
+
+### Embeddable Distribution 🔄 (pending test)
+
+Created `build/` folder (now version-controlled):
+
+| File | Purpose |
+|---|---|
+| `build/build_embeddables.py` | Downloads Python embeddable zip, installs pip + packages, assembles output folder |
+| `build/synthesizer.py` | Entry-point: `from pilatus_synthesizer.app import gui_main; gui_main()` |
+| `build/run.cpp` | C++ launcher source — runs `embeddables\pythonw.exe build\synthesizer.py` |
+| `build/README.md` | Build instructions |
+| `build/.gitignore` | Excludes compiled `synthesizer.exe` and MSVC artifacts |
+
+Output: `dist/synthesizer-0_5_1-x64/` (same layout as legacy `synthesizer-0_4_8-x64`)
+
+---
+
+## Previous Work (2026-03-04 Session)
 
 ### Bugs Fixed ✅
 
@@ -109,12 +142,22 @@
 - tksheet replacing TkTable
 - All dialogs and windows
 
-### Phase 5: Tests & Polish 🔄 (in progress)
+### Phase 5: Tests & Polish ✅
 - conftest.py with data gating
 - Unit tests (basic_utils, preferences, settings)
 - Integration tests (7 data-dependent files)
 - CI workflow (pytest with data gating)
 - pyproject.toml pytest and ruff config
+- All 9 GUI bugs fixed
+- Auto-run mode (confirmation + ActionWindow suppressed)
+- PyPI release via Trusted Publisher GitHub Actions workflow
+- DnD migrated from bundled tkdnd2.8 → python-tkdnd
+- Execution log window width fix
+
+### Phase 6: Embeddable Distribution 🔄 (pending test)
+- `build/` folder created and version-controlled
+- Build script, launcher script, C++ launcher source, README
+- Test pending: run `python build/build_embeddables.py`
 
 ---
 
@@ -145,6 +188,12 @@ pilatus-synthesizer/
 ├── PROJECT_STATUS.md        # Dynamic: Current state (this file)
 ├── MIGRATION_PLAN.md        # Migration roadmap
 ├── pyproject.toml           # Package config, dependencies
+├── .github/workflows/       # CI: pytest + PyPI Trusted Publisher
+├── build/                   # Embeddable distribution build scripts
+│   ├── README.md            # Build instructions
+│   ├── build_embeddables.py # Main build script
+│   ├── synthesizer.py       # Entry-point script
+│   └── run.cpp              # C++ launcher source
 ├── pilatus_synthesizer/     # Main package
 │   ├── __init__.py
 │   ├── app.py              # Entry point

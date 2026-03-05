@@ -1,0 +1,4 @@
+# Build output — not version-controlled
+synthesizer.exe
+*.obj
+*.pdb
