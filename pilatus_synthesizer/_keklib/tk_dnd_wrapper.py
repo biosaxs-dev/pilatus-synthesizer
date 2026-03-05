@@ -45,5 +45,5 @@ class TkDND:
         if not self._available:
             return
 
-        widget.drop_target_register(dndtype)
-        widget.dnd_bind('<<Drop>>', callback)
+        widget.register_drop_target(dndtype)
+        widget.bind('<<Drop>>', callback)

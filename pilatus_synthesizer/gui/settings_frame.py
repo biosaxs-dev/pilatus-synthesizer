@@ -648,7 +648,7 @@ class EntryFrame(tk.Frame):
             self._dnd.bindtarget(
                 widget,
                 lambda ev, p=proc: _drop(ev, p),
-                'text/uri-list',
+                '*',
             )
             ToolTip(widget,
                     'You can enter directly, use the file dialog button, '

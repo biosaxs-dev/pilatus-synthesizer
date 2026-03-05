@@ -42,6 +42,15 @@ class ActionWindow(tk.Toplevel):
                  max_progress: int = 100,
                  on_ok=None, on_cancel=None):
         tk.Toplevel.__init__(self, parent)
+
+        # Set geometry before any widgets are packed so the WM honours it.
+        top = parent.winfo_toplevel()
+        top.update_idletasks()
+        pw = top.winfo_width()
+        px = top.winfo_rootx()
+        py = top.winfo_rooty()
+        self.geometry(f'{pw}x500+{px}+{py + 40}')
+
         self.title(title)
         self.resizable(True, True)
         tk_set_icon_portable(self, 'synthesizer')
@@ -88,13 +97,6 @@ class ActionWindow(tk.Toplevel):
         self.protocol('WM_DELETE_WINDOW', self._on_button)
         self.transient(parent)
         self.grab_set()
-
-        # size width to match parent window
-        self.update_idletasks()
-        pw = parent.winfo_width()
-        px = parent.winfo_rootx()
-        py = parent.winfo_rooty() + 40
-        self.geometry(f'{pw}x{self.winfo_reqheight()}+{px}+{py}')
 
         self._poll()
 
