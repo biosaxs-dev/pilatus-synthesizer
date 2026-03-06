@@ -39,10 +39,12 @@ from pathlib import Path
 
 PACKAGE_NAME     = "pilatus-synthesizer"
 
-# Read version from pyproject.toml — single source of truth.
+# Read version and dependencies from pyproject.toml — single source of truth.
 _REPO_ROOT_EARLY = Path(__file__).resolve().parent.parent
 with open(_REPO_ROOT_EARLY / "pyproject.toml", "rb") as _f:
-    VERSION = tomllib.load(_f)["project"]["version"]
+    _pyproject = tomllib.load(_f)
+    VERSION   = _pyproject["project"]["version"]
+    _ALL_DEPS = _pyproject["project"]["dependencies"]
 
 PYTHON_VERSION   = "3.13.3"         # must match embeddable zip on python.org
 ARCH             = "amd64"          # amd64 or win32
@@ -62,12 +64,24 @@ PYTHON_ZIP_URL = (
 )
 
 # Each entry is a list of arguments appended to `pip install --no-cache-dir`.
-# Use extra flags (e.g. --no-deps) as needed.
+#
+# Strategy: install python-tkdnd without its sdist-only dep (ttkwidgets), then
+# install pilatus-synthesizer itself without dep-resolution, then install all
+# remaining declared deps from pyproject.toml (all have binary wheels).
+# ttkwidgets is imported by tkinterDnD at runtime so must be installed; it is
+# sdist-only, so we first install setuptools and then use --no-build-isolation.
 PACKAGES_TO_INSTALL = [
-    # python-tkdnd depends on ttkwidgets which is sdist-only and cannot be
-    # built inside the embeddable runtime.  We only need tkinterDnD itself.
+    # Skip ttkwidgets dep — we install it explicitly below after setuptools.
     ["python-tkdnd", "--no-deps"],
-    [PACKAGE_NAME],
+    # Skip dep resolution for the main package; deps installed below.
+    [PACKAGE_NAME, "--no-deps"],
+    # ttkwidgets needs a build backend; install setuptools first, then build
+    # ttkwidgets reusing it (--no-build-isolation avoids a failing isolated env).
+    ["setuptools"],
+    ["ttkwidgets", "--no-build-isolation"],
+    # Remaining declared deps from pyproject.toml, excluding python-tkdnd
+    # (already installed above).  All of these ship binary wheels.
+    *([dep] for dep in _ALL_DEPS if "python-tkdnd" not in dep),
 ]
 
 # ---------------------------------------------------------------------------
@@ -77,31 +91,31 @@ def banner(msg):
 
 
 def check_version_consistency():
-    """Warn if the repo version differs from the globally installed package.
+    """Warn if the repo version differs from the latest version on PyPI.
 
-    The build installs pilatus-synthesizer from PyPI.  If the globally
-    installed version (i.e. what pip will pull) differs from the repo version
-    in pyproject.toml the embeddable distribution will contain a different
-    version than intended.  Publish a new release before building.
+    The build installs pilatus-synthesizer from PyPI.  If the PyPI version
+    differs from the repo version in pyproject.toml the embeddable will not
+    contain the intended release.  Publish a new release before building.
     """
-    import importlib.metadata
-    try:
-        installed = importlib.metadata.version(PACKAGE_NAME)
-    except importlib.metadata.PackageNotFoundError:
-        installed = None
+    import json
+    import urllib.error
 
-    if installed is None:
-        print(f"  WARNING: {PACKAGE_NAME} is not installed in the current Python.")
-        print(f"  The embeddable will install the latest PyPI version.")
+    pypi_url = f"https://pypi.org/pypi/{PACKAGE_NAME}/json"
+    try:
+        with urllib.request.urlopen(pypi_url, timeout=10) as resp:
+            data = json.loads(resp.read())
+        pypi_latest = data["info"]["version"]
+    except urllib.error.URLError as exc:
+        print(f"  WARNING: could not reach PyPI ({exc}). Skipping version check.")
         return
 
-    if installed == VERSION:
-        print(f"  OK: repo version == installed version == {VERSION}")
+    if pypi_latest == VERSION:
+        print(f"  OK: repo version == PyPI latest == {VERSION}")
     else:
         print(f"  WARNING: version mismatch detected!")
         print(f"    pyproject.toml (repo) : {VERSION}")
-        print(f"    globally installed    : {installed}")
-        print(f"  The embeddable will install v{installed} from PyPI, not v{VERSION}.")
+        print(f"    PyPI latest           : {pypi_latest}")
+        print(f"  The embeddable will install v{pypi_latest} from PyPI, not v{VERSION}.")
         print(f"  If you intended v{VERSION}, publish it to PyPI first.")
         answer = input("  Continue anyway? [y/N] ").strip().lower()
         if answer != "y":
@@ -222,6 +236,19 @@ def pip_install(emb_dir: Path, packages: list):
         run([python_exe, "-m", "pip", "install", "--no-cache-dir", *pkg_args])
 
 
+def installed_version_in_emb(emb_dir: Path) -> str | None:
+    """Return the version of PACKAGE_NAME installed in the embeddable, or None."""
+    python_exe = emb_dir / "python.exe"
+    if not python_exe.exists():
+        return None
+    result = subprocess.run(
+        [python_exe, "-c",
+         f"import importlib.metadata; print(importlib.metadata.version('{PACKAGE_NAME}'))"],
+        capture_output=True, text=True,
+    )
+    return result.stdout.strip() if result.returncode == 0 else None
+
+
 def copy_launcher_script(out_dir: Path):
     src = REPO_ROOT / "build" / "synthesizer.py"
     dst_dir = out_dir / "build"
@@ -309,8 +336,14 @@ def main():
     DIST_ROOT.mkdir(parents=True, exist_ok=True)
 
     if EMB_DIR.exists():
-        print(f"embeddables/ already exists at {EMB_DIR}, skipping download+unpack.")
-    else:
+        emb_ver = installed_version_in_emb(EMB_DIR)
+        if emb_ver == VERSION:
+            print(f"embeddables/ already exists with {PACKAGE_NAME}=={VERSION}, skipping download+unpack.")
+        else:
+            print(f"embeddables/ exists but has {PACKAGE_NAME}=={emb_ver} (want {VERSION}).")
+            print(f"Deleting {EMB_DIR} for a clean rebuild ...")
+            shutil.rmtree(EMB_DIR)
+    if not EMB_DIR.exists():
         banner("Step 1: Download embeddable Python")
         zip_path = download_embeddable_zip(DIST_ROOT)
 
