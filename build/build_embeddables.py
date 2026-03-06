@@ -28,6 +28,7 @@ import sys
 import platform
 import shutil
 import subprocess
+import tomllib
 import urllib.request
 import zipfile
 from pathlib import Path
@@ -37,7 +38,12 @@ from pathlib import Path
 # ---------------------------------------------------------------------------
 
 PACKAGE_NAME     = "pilatus-synthesizer"
-VERSION          = "0.5.1"          # update when bumping pyproject.toml
+
+# Read version from pyproject.toml — single source of truth.
+_REPO_ROOT_EARLY = Path(__file__).resolve().parent.parent
+with open(_REPO_ROOT_EARLY / "pyproject.toml", "rb") as _f:
+    VERSION = tomllib.load(_f)["project"]["version"]
+
 PYTHON_VERSION   = "3.13.3"         # must match embeddable zip on python.org
 ARCH             = "amd64"          # amd64 or win32
 
@@ -55,15 +61,51 @@ PYTHON_ZIP_URL = (
     f"python-{PYTHON_VERSION}-embed-{ARCH}.zip"
 )
 
+# Each entry is a list of arguments appended to `pip install --no-cache-dir`.
+# Use extra flags (e.g. --no-deps) as needed.
 PACKAGES_TO_INSTALL = [
-    "python-tkdnd",
-    PACKAGE_NAME,
+    # python-tkdnd depends on ttkwidgets which is sdist-only and cannot be
+    # built inside the embeddable runtime.  We only need tkinterDnD itself.
+    ["python-tkdnd", "--no-deps"],
+    [PACKAGE_NAME],
 ]
 
 # ---------------------------------------------------------------------------
 
 def banner(msg):
     print(f"\n{'='*60}\n  {msg}\n{'='*60}")
+
+
+def check_version_consistency():
+    """Warn if the repo version differs from the globally installed package.
+
+    The build installs pilatus-synthesizer from PyPI.  If the globally
+    installed version (i.e. what pip will pull) differs from the repo version
+    in pyproject.toml the embeddable distribution will contain a different
+    version than intended.  Publish a new release before building.
+    """
+    import importlib.metadata
+    try:
+        installed = importlib.metadata.version(PACKAGE_NAME)
+    except importlib.metadata.PackageNotFoundError:
+        installed = None
+
+    if installed is None:
+        print(f"  WARNING: {PACKAGE_NAME} is not installed in the current Python.")
+        print(f"  The embeddable will install the latest PyPI version.")
+        return
+
+    if installed == VERSION:
+        print(f"  OK: repo version == installed version == {VERSION}")
+    else:
+        print(f"  WARNING: version mismatch detected!")
+        print(f"    pyproject.toml (repo) : {VERSION}")
+        print(f"    globally installed    : {installed}")
+        print(f"  The embeddable will install v{installed} from PyPI, not v{VERSION}.")
+        print(f"  If you intended v{VERSION}, publish it to PyPI first.")
+        answer = input("  Continue anyway? [y/N] ").strip().lower()
+        if answer != "y":
+            sys.exit("Aborted.")
 
 
 def download_embeddable_zip(dest: Path) -> Path:
@@ -96,6 +138,27 @@ def enable_site_packages(emb_dir: Path):
     else:
         pth.write_text(new_text, encoding="utf-8")
         print(f"{pth.name}: enabled 'import site'.")
+    return pth
+
+
+def ensure_lib_in_pth(pth: Path):
+    """Add 'Lib' and 'DLLs' entries to the ._pth file.
+
+    The embeddable zip doesn't include these paths by default, but we copy
+    tkinter into Lib/ and _tkinter.pyd into DLLs/, both of which need to be
+    on sys.path for 'import tkinter' to work.
+    """
+    text = pth.read_text(encoding="utf-8")
+    changed = False
+    for entry in ("Lib", "DLLs"):
+        if re.search(rf"^{entry}\s*$", text, flags=re.MULTILINE):
+            print(f"{pth.name}: '{entry}' already in path.")
+        else:
+            text = re.sub(r"^(python\d+\.zip)", rf"\1\n{entry}", text, count=1, flags=re.MULTILINE)
+            changed = True
+            print(f"{pth.name}: added '{entry}' to path.")
+    if changed:
+        pth.write_text(text, encoding="utf-8")
 
 
 def copy_tkinter(emb_dir: Path, local_python: Path):
@@ -147,9 +210,16 @@ def install_pip(emb_dir: Path):
 
 
 def pip_install(emb_dir: Path, packages: list):
+    """Install packages into the embeddable runtime.
+
+    *packages* is a list of argument lists; the first element is the package
+    name/spec and any additional elements are extra pip flags.
+    """
     python_exe = emb_dir / "python.exe"
-    for pkg in packages:
-        run([python_exe, "-m", "pip", "install", pkg])
+    for pkg_args in packages:
+        if isinstance(pkg_args, str):
+            pkg_args = [pkg_args]
+        run([python_exe, "-m", "pip", "install", "--no-cache-dir", *pkg_args])
 
 
 def copy_launcher_script(out_dir: Path):
@@ -160,14 +230,68 @@ def copy_launcher_script(out_dir: Path):
     print(f"  Copied synthesizer.py -> {dst_dir}")
 
 
-def copy_exe_if_present(out_dir: Path):
-    """Copy a pre-built synthesizer.exe from build/ if available."""
-    src = REPO_ROOT / "build" / "synthesizer.exe"
-    if src.exists():
-        shutil.copyfile(src, out_dir / "synthesizer.exe")
-        print(f"  Copied synthesizer.exe")
-    else:
-        print("  synthesizer.exe not found — build from build/run.cpp with MSVC if needed.")
+def find_vcvars64() -> Path | None:
+    """Locate vcvars64.bat for the latest installed Visual Studio via vswhere."""
+    vswhere = Path(r"C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe")
+    if not vswhere.exists():
+        return None
+    result = subprocess.run(
+        [
+            vswhere, "-latest", "-products", "*",
+            "-requires", "Microsoft.VisualStudio.Component.VC.Tools.x86.x64",
+            "-property", "installationPath",
+        ],
+        capture_output=True, text=True,
+    )
+    if result.returncode != 0 or not result.stdout.strip():
+        return None
+    vcvars = Path(result.stdout.strip()) / "VC" / "Auxiliary" / "Build" / "vcvars64.bat"
+    return vcvars if vcvars.exists() else None
+
+
+def build_exe(out_dir: Path) -> bool:
+    """Build synthesizer.exe from build/run.cpp using MSVC.
+
+    Falls back to copying a pre-built exe from build/ if one exists.
+    Returns True on success, False if MSVC was not found.
+    """
+    # Fast path: pre-built exe already committed to build/
+    src_prebuilt = REPO_ROOT / "build" / "synthesizer.exe"
+    if src_prebuilt.exists():
+        shutil.copyfile(src_prebuilt, out_dir / "synthesizer.exe")
+        print("  Copied pre-built synthesizer.exe")
+        return True
+
+    vcvars = find_vcvars64()
+    if vcvars is None:
+        print("  MSVC not found — synthesizer.exe not built.")
+        print("  Install Visual Studio (C++ workload) or Build Tools for VS 2022.")
+        print("  Then re-run this script, or build manually:")
+        print("    cd build && cl /D WINDOWS /D UNICODE /MT /EHsc run.cpp /Fe:synthesizer.exe")
+        return False
+
+    cpp_src = REPO_ROOT / "build" / "run.cpp"
+    exe_out = out_dir / "synthesizer.exe"
+    cl_cmd = f'cl /D WINDOWS /D UNICODE /MT /EHsc "{cpp_src}" /Fe:"{exe_out}"'
+    # `call` + single string avoids subprocess's extra quoting and cmd.exe's
+    # quote-stripping behavior (which triggers when the string starts with ").
+    print(f"  Using: {vcvars}")
+    result = subprocess.run(
+        f'cmd /c call "{vcvars}" && {cl_cmd}',
+        capture_output=True, text=True,
+    )
+    if result.stdout:
+        # Print only last few lines (cl.exe is verbose)
+        lines = result.stdout.strip().splitlines()
+        for line in lines[-6:]:
+            print(f"    {line}")
+    if result.returncode != 0:
+        if result.stderr:
+            print(result.stderr)
+        print("  WARNING: synthesizer.exe build failed.")
+        return False
+    print(f"  Built: {exe_out}")
+    return True
 
 
 # ---------------------------------------------------------------------------
@@ -179,6 +303,8 @@ def main():
         sys.exit("This script is Windows-only.")
 
     banner(f"Building {OUT_NAME}")
+    banner("Version check")
+    check_version_consistency()
 
     DIST_ROOT.mkdir(parents=True, exist_ok=True)
 
@@ -192,10 +318,11 @@ def main():
         unzip_embeddable(zip_path, EMB_DIR)
 
     banner("Step 3: Enable site-packages")
-    enable_site_packages(EMB_DIR)
+    pth = enable_site_packages(EMB_DIR)
 
     banner("Step 4: Copy Tkinter support")
     copy_tkinter(EMB_DIR, LOCAL_PYTHON_DIR)
+    ensure_lib_in_pth(pth)
 
     banner("Step 5: Install pip")
     install_pip(EMB_DIR)
@@ -206,8 +333,8 @@ def main():
     banner("Step 7: Copy launcher script")
     copy_launcher_script(OUT_DIR)
 
-    banner("Step 8: Copy synthesizer.exe (optional)")
-    copy_exe_if_present(OUT_DIR)
+    banner("Step 8: Build synthesizer.exe")
+    build_exe(OUT_DIR)
 
     banner("Done!")
     print(f"\nOutput folder: {OUT_DIR}")
